@@ -1,0 +1,179 @@
+<link rel="icon"
+    href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌙</text></svg>">
+<title>how to calm down</title>
+
+<style>
+    @import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Sans:wght@300;400&display=swap');
+
+    .breath-wrap {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 3rem 1rem;
+        min-height: 460px;
+        font-family: 'DM Sans', sans-serif;
+    }
+
+    .circle-container {
+        position: relative;
+        width: 180px;
+        height: 180px;
+        margin-bottom: 2rem;
+    }
+
+    .circle-ring {
+        position: absolute;
+        inset: 0;
+        border-radius: 50%;
+        border: 1.5px solid var(--color-border-secondary);
+    }
+
+    .circle-dot {
+        width: 60px;
+        height: 60px;
+        border-radius: 50%;
+        background: #7F77DD;
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+    }
+
+    .breath-label {
+        font-family: 'DM Serif Display', serif;
+        font-size: 22px;
+        color: var(--color-text-primary);
+        margin-bottom: 0.25rem;
+        min-height: 32px;
+        text-align: center;
+    }
+
+    .breath-sub {
+        font-size: 13px;
+        color: var(--color-text-secondary);
+        margin-bottom: 0.5rem;
+        text-align: center;
+        min-height: 20px;
+    }
+
+    .timer-num {
+        font-family: 'DM Serif Display', serif;
+        font-size: 36px;
+        color: #7F77DD;
+        min-height: 48px;
+        text-align: center;
+        margin-bottom: 1.5rem;
+        letter-spacing: 1px;
+    }
+
+    .btn-start {
+        background: transparent;
+        border: 0.5px solid var(--color-border-secondary);
+        border-radius: var(--border-radius-lg);
+        padding: 10px 28px;
+        font-family: 'DM Sans', sans-serif;
+        font-size: 14px;
+        font-weight: 400;
+        color: var(--color-text-primary);
+        cursor: pointer;
+        transition: background 0.15s;
+    }
+
+    .btn-start:hover {
+        background: var(--color-background-secondary);
+    }
+
+    .cycle-count {
+        font-size: 12px;
+        color: var(--color-text-tertiary);
+        margin-top: 1rem;
+        min-height: 18px;
+    }
+</style>
+
+<div class="breath-wrap">
+    <h2 class="sr-only">how to calm down</h2>
+    <div class="circle-container">
+        <div class="circle-ring"></div>
+        <svg style="position:absolute;inset:0;width:100%;height:100%;transform:rotate(-90deg)" viewBox="0 0 180 180">
+            <circle id="progressArc" cx="90" cy="90" r="88" fill="none" stroke="#7F77DD" stroke-width="1.5"
+                stroke-dasharray="553" stroke-dashoffset="553" stroke-linecap="round" opacity="0.4" />
+        </svg>
+        <div class="circle-dot" id="dot"></div>
+    </div>
+    <div class="breath-label" id="label">ready</div>
+    <div class="breath-sub" id="sub">whenever you are</div>
+    <div class="timer-num" id="timerNum"></div>
+    <button class="btn-start" id="btn" onclick="toggle()">start</button>
+    <div class="cycle-count" id="cycles"></div>
+</div>
+
+<script>
+    const dot = document.getElementById('dot');
+    const label = document.getElementById('label');
+    const sub = document.getElementById('sub');
+    const btn = document.getElementById('btn');
+    const arc = document.getElementById('progressArc');
+    const cyclesEl = document.getElementById('cycles');
+    const timerNum = document.getElementById('timerNum');
+
+    const INHALE = 4000, HOLD1 = 4000, EXHALE = 6000, HOLD2 = 2000;
+    const TOTAL = INHALE + HOLD1 + EXHALE + HOLD2;
+    const CIRC = 553;
+
+    let running = false, raf = null, startTime = null, cycleCount = 0;
+
+    const phases = [
+        { name: 'breathe in', hint: 'through your nose', dur: INHALE, minSize: 60, maxSize: 140 },
+        { name: 'hold', hint: 'gently', dur: HOLD1, minSize: 140, maxSize: 140 },
+        { name: 'breathe out', hint: 'slow and steady', dur: EXHALE, minSize: 140, maxSize: 60 },
+        { name: 'hold', hint: '', dur: HOLD2, minSize: 60, maxSize: 60 },
+    ];
+
+    function easeInOut(t) { return t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t; }
+
+    function animate(ts) {
+        if (!startTime) startTime = ts;
+        const elapsed = (ts - startTime) % TOTAL;
+        const progress = elapsed / TOTAL;
+        arc.style.strokeDashoffset = CIRC * (1 - progress);
+
+        let acc = 0, phase = phases[0], phaseT = 0;
+        for (let p of phases) {
+            if (elapsed < acc + p.dur) { phase = p; phaseT = (elapsed - acc) / p.dur; break; }
+            acc += p.dur;
+        }
+
+        const eased = easeInOut(phaseT);
+        const size = phase.minSize + (phase.maxSize - phase.minSize) * eased;
+        dot.style.width = size + 'px';
+        dot.style.height = size + 'px';
+        label.textContent = phase.name;
+        sub.textContent = phase.hint;
+
+        const remaining = Math.ceil((phase.dur - phaseT * phase.dur) / 1000);
+        timerNum.textContent = remaining;
+
+        const c = Math.floor((ts - startTime) / TOTAL);
+        if (c > cycleCount) { cycleCount = c; cyclesEl.textContent = cycleCount + ' cycle' + (cycleCount === 1 ? '' : 's') + ' completed'; }
+
+        if (running) raf = requestAnimationFrame(animate);
+    }
+
+    function toggle() {
+        if (!running) {
+            running = true; startTime = null; cycleCount = 0; cyclesEl.textContent = ''; timerNum.textContent = '';
+            btn.textContent = 'stop';
+            raf = requestAnimationFrame(animate);
+        } else {
+            running = false;
+            cancelAnimationFrame(raf);
+            dot.style.width = '60px'; dot.style.height = '60px';
+            arc.style.strokeDashoffset = CIRC;
+            label.textContent = 'paused'; sub.textContent = 'take your time';
+            timerNum.textContent = '';
+            btn.textContent = 'start again';
+        }
+    }
+</script>
